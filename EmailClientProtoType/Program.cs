@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Net.Mail;
 using MailKit.Net.Imap;
+using MailKit.Net.Smtp;
 using MailKit.Search;
 using MailKit;
 using MimeKit;
@@ -11,15 +11,82 @@ namespace EmailClientProtoType
 	{
 		static void Main(string[] args)
 		{
-			using var client = new ImapClient();
+			var imapServer = "imaps.server.de";
+			var imapPort = 007;
 
-			// Serverdaten des Email-Postfachs
-			client.Connect("IMAP-Postfach", PORT, false);
+			var smtpServer = "smtps.server.de";
+			var smtpPort = 007;
 
-			// Benutzername und Passwort
-			client.Authenticate("Benutzername", "Passwort");
+			Console.Write("Email...: ");
+			string email = Console.ReadLine();
+			Console.Write("Passwort: ");
+			string password = Console.ReadLine();
+			Console.WriteLine();
 
-			// The Inbox folder is always available on all IMAP servers...
+			var message = new MimeMessage();
+			message.From.Add(new MailboxAddress("MK-NEUKO-EmailClientProtoType", "email@adresse.de"));
+			message.To.Add(new MailboxAddress("Alias", "email@adresse.de"));
+			message.Subject = "+++Test+++ EmailClientProtoType +++Test+++";
+			message.Body = new TextPart("plain")
+			{
+				Text = @"Hallo Empfänger,
+
+				Die Email wurde vom EmailClientProtoType versendet.
+
+				--ProtoType"
+			};
+
+			var smtpClient = new SmtpClient();
+
+			try
+			{
+				SendTestEmail(smtpClient, message, smtpServer, smtpPort, email, password);
+			}
+			catch (Exception ex)
+			{
+
+				Console.WriteLine(ex.Message);
+				Console.WriteLine(ex.StackTrace);
+			}
+			finally
+			{
+				smtpClient.Disconnect(true);
+				smtpClient.Dispose();
+			}
+
+
+			var imapClient = new ImapClient();
+
+			try
+			{
+				RetrieveInbox(imapClient, imapServer, imapPort, email, password);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine(ex.Message);
+				Console.WriteLine(ex.StackTrace);
+			}
+			finally
+			{
+				imapClient.Disconnect(true);
+				imapClient.Dispose();
+			}					
+		}
+
+		private static void SendTestEmail(SmtpClient client, MimeMessage message, string server, int port, string email, string password)
+		{			
+			client.Connect(server, port, true);
+
+			// Note: only needed if the SMTP server requires authentication
+			client.Authenticate(email, password);
+			client.Send(message);
+		}
+
+		private static void RetrieveInbox(ImapClient client, string server, int port, string email, string password)
+		{			
+			client.Connect(server, port, true);			
+			client.Authenticate(email, password);
+			
 			var inbox = client.Inbox;
 			inbox.Open(FolderAccess.ReadOnly);
 
@@ -31,8 +98,6 @@ namespace EmailClientProtoType
 				var message = inbox.GetMessage(i);
 				Console.WriteLine("Subject: {0}", message.Subject);
 			}
-
-			client.Disconnect(true);
 		}
 	}
 }
